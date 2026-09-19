@@ -32,6 +32,7 @@ body {
   font-weight: 400;
   line-height: 1.6;
   height: 100vh;
+  height: 100dvh; /* accounts for mobile browser address/toolbar */
   overscroll-behavior-y: none;
 
   background-color: var(--paper);
@@ -293,4 +294,51 @@ a:visited {
 
 .cycling-popup .leaflet-popup-content-wrapper {
   border-left: 3px solid var(--cycle);
+}
+
+/* RESPONSIVE / MOBILE */
+@media (max-width: 900px) {
+  body {
+    flex-direction: column;
+    padding: 1.2rem;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .sidebar {
+    flex-basis: auto;
+    width: 100%;
+    padding: 2rem 2.4rem 1.6rem;
+    order: 2; /* map on top, workout log/form below on small screens */
+  }
+
+  .workouts {
+    height: 26vh;
+  }
+
+  #map {
+    flex: 1 1 auto;
+    min-height: 32vh;
+    order: 1;
+  }
+
+  .logo {
+    margin-bottom: 1.6rem;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  body {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    width: 46rem;
+    max-width: 60vw;
+    order: 1;
+  }
+
+  #map {
+    order: 2;
+  }
 }
