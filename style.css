@@ -32,7 +32,6 @@ body {
   font-weight: 400;
   line-height: 1.6;
   height: 100vh;
-  height: 100dvh; /* accounts for mobile browser address/toolbar */
   overscroll-behavior-y: none;
 
   background-color: var(--paper);
@@ -50,6 +49,58 @@ a:visited {
   * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* RESPONSIVE: stack sidebar above the map once side-by-side gets cramped */
+@media (max-width: 900px) {
+  body {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    padding: 1.6rem;
+    gap: 1.6rem;
+  }
+
+  .sidebar {
+    flex-basis: auto;
+    width: 100%;
+    padding: 2rem 2.4rem 1.6rem;
+  }
+
+  .workouts {
+    height: 34vh;
+  }
+
+  #map {
+    flex: 1 1 auto;
+    min-height: 42vh;
+  }
+}
+
+/* RESPONSIVE: single-column form and roomier tap targets on phones */
+@media (max-width: 480px) {
+  .form {
+    grid-template-columns: 1fr;
+    max-height: 34rem;
+  }
+
+  .workouts-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .sort__select,
+  .btn-fit {
+    padding: 0.7rem 1rem;
+  }
+
+  .workout__edit {
+    padding: 0.6rem;
+    font-size: 1.5rem;
+  }
+
+  .workout__value {
+    font-size: 2.2rem;
   }
 }
 
@@ -89,6 +140,54 @@ a:visited {
   margin-bottom: 3.2rem;
 }
 
+.hidden {
+  display: none;
+}
+
+/* TOOLBAR */
+.workouts-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.sort__select {
+  font-family: inherit;
+  font-size: 1.3rem;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.8rem;
+}
+
+.sort__select option {
+  color: var(--ink);
+}
+
+.btn-fit {
+  font-family: inherit;
+  font-size: 1.3rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.btn-fit:hover {
+  border-color: var(--cycle);
+  color: var(--cycle);
+}
+
 /* WORKOUT LOG */
 .workouts {
   list-style: none;
@@ -116,13 +215,40 @@ a:visited {
   border-bottom: 1px solid var(--line);
 }
 
+.workout--highlighted {
+  padding-left: 0.6rem;
+  background-color: rgba(238, 241, 234, 0.05);
+}
+
 .workout__title {
   display: flex;
   align-items: center;
   gap: 0.9rem;
   font-size: 1.6rem;
   font-weight: 600;
-  margin-bottom: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+.workout__edit {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+
+.workout__edit:hover {
+  opacity: 1;
+}
+
+.workout__location {
+  font-size: 1.2rem;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
 }
 
 .workout__title::before {
@@ -178,15 +304,18 @@ a:visited {
   grid-template-columns: 1fr 1fr;
   gap: 1rem 2.4rem;
 
-  height: 10.5rem;
+  max-height: 12rem;
+  overflow: hidden;
   transition:
-    all 0.4s ease,
-    transform 1ms;
+    max-height 0.4s ease,
+    opacity 0.3s ease,
+    padding 0.4s ease,
+    margin 0.4s ease,
+    border-color 0.4s ease;
 }
 
 .form.hidden {
-  transform: translateY(-2rem);
-  height: 0;
+  max-height: 0;
   padding: 0 0.2rem;
   border-color: transparent;
   margin-bottom: 0;
@@ -294,51 +423,4 @@ a:visited {
 
 .cycling-popup .leaflet-popup-content-wrapper {
   border-left: 3px solid var(--cycle);
-}
-
-/* RESPONSIVE / MOBILE */
-@media (max-width: 900px) {
-  body {
-    flex-direction: column;
-    padding: 1.2rem;
-    height: 100vh;
-    height: 100dvh;
-  }
-
-  .sidebar {
-    flex-basis: auto;
-    width: 100%;
-    padding: 2rem 2.4rem 1.6rem;
-    order: 2; /* map on top, workout log/form below on small screens */
-  }
-
-  .workouts {
-    height: 26vh;
-  }
-
-  #map {
-    flex: 1 1 auto;
-    min-height: 32vh;
-    order: 1;
-  }
-
-  .logo {
-    margin-bottom: 1.6rem;
-  }
-}
-
-@media (max-width: 900px) and (orientation: landscape) {
-  body {
-    flex-direction: row;
-  }
-
-  .sidebar {
-    width: 46rem;
-    max-width: 60vw;
-    order: 1;
-  }
-
-  #map {
-    order: 2;
-  }
 }
