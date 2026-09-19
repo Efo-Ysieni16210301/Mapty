@@ -80,6 +80,7 @@ const containerWorkouts = document.querySelector('.workouts');
 const workoutsToolbar = document.querySelector('.workouts-toolbar');
 const sortSelect = document.querySelector('.sort__select');
 const btnFit = document.querySelector('.btn-fit');
+const btnClear = document.querySelector('.btn-clear');
 const inputType = document.querySelector('.form__input--type');
 const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
@@ -101,29 +102,23 @@ class App {
 
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
-    containerWorkouts.addEventListener(
-      'click',
-      this._onWorkoutClick.bind(this),
-    );
+    containerWorkouts.addEventListener('click', this._onWorkoutClick.bind(this));
     sortSelect.addEventListener('change', () => this._renderWorkoutList());
     btnFit.addEventListener('click', () => this._fitMapToWorkouts());
+    btnClear.addEventListener('click', () => this._clearAll());
   }
 
   // ---------- MAP SETUP ----------
 
   _getPosition() {
     const saved = this._getSavedView();
-    if (saved)
-      return this._loadMap(
-        { coords: { latitude: saved.lat, longitude: saved.lng } },
-        saved.zoom,
-      );
+    if (saved) return this._loadMap({ coords: { latitude: saved.lat, longitude: saved.lng } }, saved.zoom);
 
     if (!navigator.geolocation) return this._loadMap(this._defaultPosition());
 
     navigator.geolocation.getCurrentPosition(
       pos => this._loadMap(pos),
-      () => this._loadMap(this._defaultPosition()),
+      () => this._loadMap(this._defaultPosition())
     );
   }
 
@@ -152,7 +147,7 @@ class App {
     const c = this.#map.getCenter();
     localStorage.setItem(
       'mapView',
-      JSON.stringify({ lat: c.lat, lng: c.lng, zoom: this.#map.getZoom() }),
+      JSON.stringify({ lat: c.lat, lng: c.lng, zoom: this.#map.getZoom() })
     );
   }
 
@@ -181,11 +176,7 @@ class App {
   }
 
   _hideForm() {
-    inputDistance.value =
-      inputDuration.value =
-      inputCadence.value =
-      inputElevation.value =
-        '';
+    inputDistance.value = inputDuration.value = inputCadence.value = inputElevation.value = '';
     form.style.display = 'none';
     form.classList.add('hidden');
     setTimeout(() => (form.style.display = 'grid'), 1000);
@@ -199,12 +190,8 @@ class App {
   _setFormType(type) {
     inputType.value = type;
     const isRunning = type === 'running';
-    inputCadence
-      .closest('.form__row')
-      .classList.toggle('form__row--hidden', !isRunning);
-    inputElevation
-      .closest('.form__row')
-      .classList.toggle('form__row--hidden', isRunning);
+    inputCadence.closest('.form__row').classList.toggle('form__row--hidden', !isRunning);
+    inputElevation.closest('.form__row').classList.toggle('form__row--hidden', isRunning);
   }
 
   _showError(message) {
@@ -237,45 +224,30 @@ class App {
     e.preventDefault();
     this._hideError();
 
-    const validInputs = (...inputs) =>
-      inputs.every(inp => Number.isFinite(inp));
+    const validInputs = (...inputs) => inputs.every(inp => Number.isFinite(inp));
     const allPositive = (...inputs) => inputs.every(inp => inp > 0);
 
     const type = inputType.value;
     const distance = +inputDistance.value;
     const duration = +inputDuration.value;
 
-    const existing = this.#editingId
-      ? this.#workouts.find(w => w.id === this.#editingId)
-      : null;
-    const coords = existing
-      ? existing.coords
-      : this.#mapEvent && [
-          this.#mapEvent.latlng.lat,
-          this.#mapEvent.latlng.lng,
-        ];
+    const existing = this.#editingId ? this.#workouts.find(w => w.id === this.#editingId) : null;
+    const coords = existing ? existing.coords : this.#mapEvent && [this.#mapEvent.latlng.lat, this.#mapEvent.latlng.lng];
 
-    if (!coords)
-      return this._showError('Click the map to choose a location first.');
+    if (!coords) return this._showError('Click the map to choose a location first.');
 
     let workout;
 
     if (type === 'running') {
       const cadence = +inputCadence.value;
-      if (
-        !validInputs(distance, duration, cadence) ||
-        !allPositive(distance, duration, cadence)
-      )
+      if (!validInputs(distance, duration, cadence) || !allPositive(distance, duration, cadence))
         return this._showError('Inputs have to be positive numbers!');
       workout = new Running(coords, distance, duration, cadence);
     }
 
     if (type === 'cycling') {
       const elevation = +inputElevation.value;
-      if (
-        !validInputs(distance, duration, elevation) ||
-        !allPositive(distance, duration)
-      )
+      if (!validInputs(distance, duration, elevation) || !allPositive(distance, duration))
         return this._showError('Inputs have to be positive numbers!');
       workout = new Cycling(coords, distance, duration, elevation);
     }
@@ -307,13 +279,54 @@ class App {
   // ---------- RENDERING ----------
 
   _onWorkoutClick(e) {
+    const deleteBtn = e.target.closest('.workout__delete');
+    if (deleteBtn) {
+      e.stopPropagation();
+      this._deleteWorkout(deleteBtn.dataset.id);
+      return;
+    }
+
     const editBtn = e.target.closest('.workout__edit');
     if (editBtn) {
       e.stopPropagation();
       this._startEdit(editBtn.dataset.id);
       return;
     }
+
     this._moveToPopup(e);
+  }
+
+  _deleteWorkout(id) {
+    const workout = this.#workouts.find(w => w.id === id);
+    if (!workout) return;
+    if (!confirm(`Delete "${workout.description}"?`)) return;
+
+    this.#markers.get(id)?.remove();
+    this.#markers.delete(id);
+    this.#workouts = this.#workouts.filter(w => w.id !== id);
+
+    if (this.#editingId === id) {
+      this.#editingId = null;
+      this._hideForm();
+    }
+
+    this._renderWorkoutList();
+    this._setLocalStorage();
+  }
+
+  _clearAll() {
+    if (!this.#workouts.length) return;
+    if (!confirm('Delete all workouts? This cannot be undone.')) return;
+
+    this.#markers.forEach(marker => marker.remove());
+    this.#markers.clear();
+    this.#workouts = [];
+    this.#editingId = null;
+
+    this._renderWorkoutList();
+    this._hideForm();
+    this._hideError();
+    localStorage.removeItem('workouts');
   }
 
   _moveToPopup(e) {
@@ -322,9 +335,7 @@ class App {
     const workoutEl = e.target.closest('.workout');
     if (!workoutEl) return;
 
-    const workout = this.#workouts.find(
-      work => work.id === workoutEl.dataset.id,
-    );
+    const workout = this.#workouts.find(work => work.id === workoutEl.dataset.id);
     if (!workout) return;
 
     this.#map.setView(workout.coords, this.#mapZoomLevel, {
@@ -347,7 +358,7 @@ class App {
           autoClose: false,
           closeOnClick: false,
           className: `${workout.type}-popup`,
-        }),
+        })
       )
       .setPopupContent(`${workout.icon} ${workout.description}`)
       .openPopup();
@@ -402,6 +413,7 @@ class App {
         <h2 class="workout__title">
           ${workout.description}
           <button type="button" class="workout__edit" data-id="${workout.id}" aria-label="Edit workout">✏️</button>
+          <button type="button" class="workout__delete" data-id="${workout.id}" aria-label="Delete workout">🗑️</button>
         </h2>
         ${workout.location ? `<p class="workout__location">${workout.location}</p>` : ''}
         <div class="workout__details">
@@ -420,9 +432,7 @@ class App {
 
   _renderWorkoutList() {
     containerWorkouts.querySelectorAll('.workout').forEach(el => el.remove());
-    const html = this._getSortedWorkouts()
-      .map(w => this._workoutHTML(w))
-      .join('');
+    const html = this._getSortedWorkouts().map(w => this._workoutHTML(w)).join('');
     form.insertAdjacentHTML('afterend', html);
     workoutsToolbar.classList.toggle('hidden', this.#workouts.length === 0);
   }
@@ -433,7 +443,7 @@ class App {
     try {
       const [lat, lng] = workout.coords;
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10`,
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10`
       );
       if (!res.ok) return;
 
@@ -482,12 +492,7 @@ class App {
       const rebuilt =
         work.type === 'running'
           ? new Running(work.coords, work.distance, work.duration, work.cadence)
-          : new Cycling(
-              work.coords,
-              work.distance,
-              work.duration,
-              work.elevationGain,
-            );
+          : new Cycling(work.coords, work.distance, work.duration, work.elevationGain);
 
       return Object.assign(rebuilt, {
         id: work.id,
